@@ -6,6 +6,7 @@ export function AuthGate({ children }) {
   const [isChecking, setIsChecking] = useState(true)
   const [hasAccess, setHasAccess] = useState(false)
   const [accessError, setAccessError] = useState('')
+  const [ownerExists, setOwnerExists] = useState(null)
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
@@ -40,12 +41,20 @@ export function AuthGate({ children }) {
         setAccessError('Este acesso não é o proprietário autorizado deste aplicativo.')
       } else {
         setHasAccess(true)
+        setOwnerExists(true)
       }
 
       setIsChecking(false)
     }
 
-    supabase.auth.getSession().then(({ data }) => verifySession(data.session))
+    Promise.all([supabase.auth.getSession(), supabase.rpc('app_owner_exists')]).then(
+      ([{ data: sessionData }, ownerResult]) => {
+        if (isCurrent) {
+          setOwnerExists(Boolean(ownerResult.data))
+        }
+        verifySession(sessionData.session)
+      },
+    )
     const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
       window.setTimeout(() => verifySession(nextSession), 0)
     })
@@ -61,7 +70,7 @@ export function AuthGate({ children }) {
   }
 
   if (!session) {
-    return <LoginPage initialError={accessError} />
+    return <LoginPage canCreateOwner={ownerExists === false} initialError={accessError} />
   }
 
   if (!hasAccess) {
@@ -80,7 +89,7 @@ export function AuthGate({ children }) {
   })
 }
 
-function LoginPage({ initialError }) {
+function LoginPage({ canCreateOwner, initialError }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [feedback, setFeedback] = useState(initialError)
@@ -122,7 +131,9 @@ function LoginPage({ initialError }) {
         </p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950">Controle Financeiro</h1>
         <p className="mt-3 text-sm leading-6 text-slate-600">
-          Entre com seu acesso. Na primeira vez, use “Criar primeiro acesso”; esse usuário se torna o único proprietário dos dados.
+          {canCreateOwner
+            ? 'Na primeira vez, use “Criar primeiro acesso”; esse usuário se torna o único proprietário dos dados.'
+            : 'Entre com o acesso pessoal já confirmado para consultar seus dados.'}
         </p>
 
         <label className="mt-6 block">
@@ -149,7 +160,7 @@ function LoginPage({ initialError }) {
 
         {feedback && <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">{feedback}</p>}
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+        <div className={`mt-6 grid gap-3 ${canCreateOwner ? 'sm:grid-cols-2' : ''}`}>
           <button
             className="rounded-xl bg-emerald-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:bg-slate-400"
             disabled={isSubmitting}
@@ -158,14 +169,16 @@ function LoginPage({ initialError }) {
           >
             {isSubmitting ? 'Validando…' : 'Entrar'}
           </button>
-          <button
-            className="rounded-xl border border-emerald-700 px-4 py-3 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50 disabled:border-slate-300 disabled:text-slate-400"
-            disabled={isSubmitting}
-            onClick={() => submit('signup')}
-            type="button"
-          >
-            Criar primeiro acesso
-          </button>
+          {canCreateOwner && (
+            <button
+              className="rounded-xl border border-emerald-700 px-4 py-3 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-50 disabled:border-slate-300 disabled:text-slate-400"
+              disabled={isSubmitting}
+              onClick={() => submit('signup')}
+              type="button"
+            >
+              Criar primeiro acesso
+            </button>
+          )}
         </div>
       </section>
     </main>
