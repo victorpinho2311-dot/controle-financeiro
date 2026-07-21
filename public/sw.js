@@ -1,6 +1,7 @@
-const VERSION = 'v3'
+const VERSION = 'v4'
 const APP_CACHE = `controle-financeiro-app-${VERSION}`
 const DATA_CACHE = `controle-financeiro-data-${VERSION}`
+const IS_LOCAL_DEVELOPMENT = ['localhost', '127.0.0.1'].includes(self.location.hostname)
 
 const appShellUrl = () => new URL('./', self.registration.scope).href
 const appShellAssets = () => [
@@ -60,6 +61,11 @@ const networkFirst = async (request, cacheName, fallback) => {
 }
 
 self.addEventListener('install', (event) => {
+  if (IS_LOCAL_DEVELOPMENT) {
+    event.waitUntil(self.skipWaiting())
+    return
+  }
+
   event.waitUntil(cacheAppShell().then(() => self.skipWaiting()))
 })
 
@@ -70,6 +76,17 @@ self.addEventListener('message', (event) => {
 })
 
 self.addEventListener('activate', (event) => {
+  if (IS_LOCAL_DEVELOPMENT) {
+    event.waitUntil(
+      caches
+        .keys()
+        .then((keys) => Promise.all(keys.filter((key) => key.startsWith('controle-financeiro-')).map((key) => caches.delete(key))))
+        .then(() => self.clients.claim())
+        .then(() => self.registration.unregister()),
+    )
+    return
+  }
+
   event.waitUntil(
     caches
       .keys()
@@ -85,6 +102,10 @@ self.addEventListener('activate', (event) => {
 })
 
 self.addEventListener('fetch', (event) => {
+  if (IS_LOCAL_DEVELOPMENT) {
+    return
+  }
+
   const { request } = event
 
   if (request.method !== 'GET') {

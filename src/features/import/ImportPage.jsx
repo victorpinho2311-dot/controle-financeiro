@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { CheckCircle2, FileSpreadsheet, FileUp, LockKeyhole, UploadCloud } from 'lucide-react'
 import { parseBradescoCreditCardCsvFile } from '../../lib/card-csv.js'
 import { suggestCategoryId } from '../../lib/categorization.js'
 import { parseOfxFile } from '../../lib/ofx.js'
@@ -318,31 +319,27 @@ export function ImportPage() {
   const invoiceTotal = parsedOfx?.invoice?.reportedTotal ?? Math.abs(analysis?.summary.net ?? 0)
 
   return (
-    <main className="min-h-svh bg-slate-50 px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
-        <header className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <main className="app-page">
+      <div className="page-container">
+        <header className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm font-semibold tracking-[0.18em] text-emerald-700 uppercase">
-              Controle financeiro
-            </p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">
-              Importar {isCreditCard ? 'fatura CSV' : 'extrato OFX'}
-            </h1>
-            <p className="mt-2 max-w-2xl text-slate-600">
-              Analise todos os lançamentos antes de confirmar a importação.
-            </p>
+            <p className="page-eyebrow"><FileUp aria-hidden="true" size={14} />Central de importação</p>
+            <h1 className="page-title">Importar {isCreditCard ? 'fatura CSV' : 'extrato OFX'}</h1>
+            <p className="page-description">Confira os lançamentos, cartões e categorias com segurança antes de salvar.</p>
           </div>
-          <span className="w-fit rounded-full bg-emerald-100 px-3 py-1 text-sm font-medium text-emerald-800">
-            Prévia processada neste aparelho
-          </span>
+          <span className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3.5 py-2 text-xs font-semibold text-emerald-800"><LockKeyhole aria-hidden="true" size={14} />Processamento privado</span>
         </header>
 
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <section className="surface-card p-5 sm:p-6">
+          <div className="mb-5 flex items-start gap-3 border-b border-slate-100 pb-5">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><FileSpreadsheet aria-hidden="true" size={19} /></span>
+            <div><h2 className="section-title">Selecione a origem</h2><p className="section-description">Escolha a conta correta e envie o arquivo exportado pelo banco.</p></div>
+          </div>
           <div className="grid gap-6 md:grid-cols-2">
             <label className="block">
               <span className="text-sm font-semibold text-slate-800">Conta de destino</span>
               <select
-                className="mt-2 block w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-slate-950 shadow-sm outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100 disabled:cursor-not-allowed disabled:bg-slate-100"
+                className="form-control mt-2"
                 disabled={isLoadingAccounts || Boolean(accountsError) || accounts.length === 0}
                 onChange={(event) => {
                   setSelectedAccountId(event.target.value)
@@ -374,7 +371,8 @@ export function ImportPage() {
 
             <div>
               <span className="text-sm font-semibold text-slate-800">{fileTypeLabel}</span>
-              <label className="mt-2 flex min-h-28 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 px-4 text-center transition hover:border-emerald-500 hover:bg-emerald-50">
+              <label className="group mt-2 flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/45 px-4 text-center transition hover:border-emerald-400 hover:bg-emerald-50">
+                <span className="mb-2 grid size-10 place-items-center rounded-xl bg-white text-emerald-700 shadow-sm transition group-hover:-translate-y-0.5"><UploadCloud aria-hidden="true" size={20} /></span>
                 <span className="text-sm font-semibold text-slate-800">
                   {selectedFileName || `Escolher ${fileTypeLabel.toLowerCase()}`}
                 </span>
@@ -397,7 +395,7 @@ export function ImportPage() {
         </section>
 
         {parsedOfx && analysis && (
-          <section className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <section className="surface-card mt-5 overflow-hidden">
             <div className="border-b border-slate-200 p-5 sm:p-6">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
@@ -428,14 +426,14 @@ export function ImportPage() {
                       {selectedAccount.name}
                     </span>
                     <button
-                      className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-200 disabled:cursor-not-allowed disabled:bg-slate-400"
+                      className="primary-button"
                       disabled={isImporting || analysis.importable.length === 0 || Boolean(importResult)}
                       onClick={handleImport}
                       type="button"
                     >
                       {isImporting
                         ? 'Importando…'
-                        : `Confirmar ${analysis.importable.length} lançamento(s)`}
+                        : <><CheckCircle2 aria-hidden="true" size={16} />Confirmar {analysis.importable.length} lançamento(s)</>}
                     </button>
                   </div>
                 )}
@@ -597,8 +595,8 @@ export function ImportPage() {
 
             {displayedTransactions.length > 0 ? (
               <div className="max-h-[38rem] overflow-auto">
-                <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-                  <thead className="sticky top-0 bg-slate-50 text-xs tracking-wide text-slate-500 uppercase">
+                <table className="data-table min-w-full divide-y divide-slate-200 text-left text-sm">
+                  <thead className="sticky top-0 bg-[#f8faf9] text-[10px] tracking-[0.1em] text-slate-400 uppercase">
                     <tr>
                       <th className="px-5 py-3 font-semibold">Data</th>
                       {isCreditCard && <th className="px-5 py-3 font-semibold">Cartão</th>}
