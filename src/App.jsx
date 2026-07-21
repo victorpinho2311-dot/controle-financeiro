@@ -1,68 +1,146 @@
 import { useState } from 'react'
+import {
+  ChartNoAxesCombined,
+  FileUp,
+  LayoutDashboard,
+  LogOut,
+  ReceiptText,
+  ShieldCheck,
+  Sparkles,
+  WalletCards,
+} from 'lucide-react'
 import { PwaControls } from './components/PwaControls.jsx'
 import { DashboardPage } from './features/dashboard/DashboardPage.jsx'
 import { ImportPage } from './features/import/ImportPage.jsx'
 import { InsightsPage } from './features/insights/InsightsPage.jsx'
 import { TransactionsPage } from './features/transactions/TransactionsPage.jsx'
 
+const navigation = [
+  { id: 'dashboard', label: 'Início', icon: LayoutDashboard },
+  { id: 'import', label: 'Importar', icon: FileUp },
+  { id: 'transactions', label: 'Lançamentos', shortLabel: 'Extrato', icon: ReceiptText },
+  { id: 'insights', label: 'Insights', icon: Sparkles },
+]
+
 function App({ email, onSignOut }) {
   const [page, setPage] = useState('dashboard')
 
   return (
-    <>
-      <nav className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:px-6 lg:px-8">
-        <div className="mx-auto flex max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-bold text-slate-950">Controle Financeiro</p>
-            <PwaControls />
+    <div className="app-shell">
+      <aside className="app-sidebar">
+        <Brand />
+
+        <div className="mt-10">
+          <p className="sidebar-label">Visão geral</p>
+          <nav aria-label="Navegação principal" className="mt-3 space-y-1.5">
+            {navigation.map((item) => (
+              <NavigationButton
+                active={page === item.id}
+                icon={item.icon}
+                key={item.id}
+                onClick={() => setPage(item.id)}
+              >
+                {item.label}
+              </NavigationButton>
+            ))}
+          </nav>
+        </div>
+
+        <div className="sidebar-footer">
+          <div className="mb-3 rounded-2xl border border-white/8 bg-white/5 p-3.5">
+            <div className="flex items-start gap-3">
+              <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-400/12 text-emerald-300">
+                <ShieldCheck aria-hidden="true" size={18} strokeWidth={1.8} />
+              </span>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-white">Ambiente protegido</p>
+                <p className="mt-1 text-[11px] leading-4 text-slate-400">Seus dados financeiros são pessoais e privados.</p>
+              </div>
+            </div>
           </div>
-          <div className="flex max-w-full gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1">
-            <NavigationButton active={page === 'dashboard'} onClick={() => setPage('dashboard')}>
-              Dashboard
-            </NavigationButton>
-            <NavigationButton active={page === 'import'} onClick={() => setPage('import')}>
-              Importar
-            </NavigationButton>
-            <NavigationButton active={page === 'transactions'} onClick={() => setPage('transactions')}>
-              Lançamentos
-            </NavigationButton>
-            <NavigationButton active={page === 'insights'} onClick={() => setPage('insights')}>
-              Insights
-            </NavigationButton>
+          <PwaControls variant="sidebar" />
+          <button className="sidebar-user" onClick={onSignOut} title={email} type="button">
+            <span className="user-avatar">{email?.charAt(0).toUpperCase()}</span>
+            <span className="min-w-0 flex-1 text-left">
+              <span className="block text-[11px] text-slate-400">Conta pessoal</span>
+              <span className="block truncate text-xs font-medium text-slate-200">{email}</span>
+            </span>
+            <LogOut aria-hidden="true" size={16} strokeWidth={1.8} />
+          </button>
+        </div>
+      </aside>
+
+      <header className="mobile-header">
+        <Brand compact />
+        <PwaControls />
+      </header>
+
+      <div className="app-content">
+        {page === 'dashboard' ? (
+          <DashboardPage onImport={() => setPage('import')} />
+        ) : page === 'transactions' ? (
+          <TransactionsPage />
+        ) : page === 'insights' ? (
+          <InsightsPage />
+        ) : (
+          <ImportPage />
+        )}
+      </div>
+
+      <nav aria-label="Navegação principal" className="mobile-navigation">
+        {navigation.map((item) => {
+          const Icon = item.icon
+          const isActive = page === item.id
+
+          return (
             <button
-              className="whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-semibold text-slate-600 transition hover:bg-white hover:text-slate-950"
-              onClick={onSignOut}
-              title={email}
+              aria-current={isActive ? 'page' : undefined}
+              className={`mobile-nav-item ${isActive ? 'is-active' : ''}`}
+              key={item.id}
+              onClick={() => setPage(item.id)}
               type="button"
             >
-              Sair
+              <Icon aria-hidden="true" size={20} strokeWidth={isActive ? 2.3 : 1.8} />
+              <span>{item.shortLabel ?? item.label}</span>
             </button>
-          </div>
-        </div>
+          )
+        })}
       </nav>
-      {page === 'dashboard' ? (
-        <DashboardPage onImport={() => setPage('import')} />
-      ) : page === 'transactions' ? (
-        <TransactionsPage />
-      ) : page === 'insights' ? (
-        <InsightsPage />
-      ) : (
-        <ImportPage />
-      )}
-    </>
+    </div>
   )
 }
 
-function NavigationButton({ active, children, onClick }) {
+function Brand({ compact = false }) {
+  return (
+    <div className={`flex items-center ${compact ? 'gap-2.5' : 'gap-3'}`}>
+      <span className={`${compact ? 'size-9 rounded-xl' : 'size-11 rounded-2xl'} brand-mark`}>
+        <WalletCards aria-hidden="true" size={compact ? 20 : 23} strokeWidth={1.9} />
+      </span>
+      <span className="min-w-0">
+        <span className={`block font-bold tracking-[-0.03em] ${compact ? 'text-[15px] text-slate-950' : 'text-base text-white'}`}>
+          Meu Financeiro
+        </span>
+        {!compact && (
+          <span className="mt-0.5 flex items-center gap-1 text-[10px] font-medium tracking-[0.14em] text-emerald-300/80 uppercase">
+            <ChartNoAxesCombined aria-hidden="true" size={11} />
+            Organização pessoal
+          </span>
+        )}
+      </span>
+    </div>
+  )
+}
+
+function NavigationButton({ active, children, icon: Icon, onClick }) {
   return (
     <button
-      className={`whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-semibold transition ${
-        active ? 'bg-white text-emerald-800 shadow-sm' : 'text-slate-600 hover:text-slate-950'
-      }`}
+      aria-current={active ? 'page' : undefined}
+      className={`sidebar-nav-item ${active ? 'is-active' : ''}`}
       onClick={onClick}
       type="button"
     >
-      {children}
+      <Icon aria-hidden="true" size={19} strokeWidth={active ? 2.2 : 1.8} />
+      <span>{children}</span>
     </button>
   )
 }

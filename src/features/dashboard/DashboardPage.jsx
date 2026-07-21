@@ -1,4 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
+import {
+  ArrowDownLeft,
+  ArrowRight,
+  ArrowUpRight,
+  CalendarDays,
+  CircleDollarSign,
+  CreditCard,
+  FileUp,
+  Landmark,
+  Layers3,
+  ReceiptText,
+  TrendingUp,
+  Wallet,
+} from 'lucide-react'
 import { getSupabaseClient } from '../../lib/supabase.js'
 
 const currencyFormatter = new Intl.NumberFormat('pt-BR', {
@@ -244,191 +258,135 @@ export function DashboardPage({ onImport }) {
   }, [transactions])
 
   const largestCategoryAmount = categoryBreakdown[0]?.amount ?? 1
-  const largestOriginAmount = Math.max(...originBreakdown.map((origin) => origin.amount), 1)
+  const originTotal = originBreakdown.reduce((total, origin) => total + origin.amount, 0)
 
   return (
-    <main className="min-h-svh bg-slate-50 px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
-        <header className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-sm font-semibold tracking-[0.18em] text-emerald-700 uppercase">Controle financeiro</p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">Visão mensal</h1>
-            <p className="mt-2 text-slate-600">Acompanhe o que entrou, saiu e onde você gastou em {monthLabel(month)}.</p>
-          </div>
-          <button
-            className="w-fit rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 focus:outline-none focus:ring-4 focus:ring-emerald-200"
-            onClick={onImport}
-            type="button"
-          >
-            Importar extrato
-          </button>
-        </header>
-
-        <section className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-3">
-          <label>
-            <span className="text-xs font-semibold tracking-wide text-slate-500 uppercase">Mês</span>
-            <input
-              className="mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100"
-              onChange={(event) => setMonth(event.target.value)}
-              type="month"
-              value={month}
-            />
-          </label>
-          <label>
-            <span className="text-xs font-semibold tracking-wide text-slate-500 uppercase">Conta</span>
-            <select
-              className="mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100"
-              onChange={(event) => {
-                setAccountId(event.target.value)
-                setCardId('')
-              }}
-              value={accountId}
-            >
-              <option value="">Todas as contas</option>
-              {accounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  {account.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span className="text-xs font-semibold tracking-wide text-slate-500 uppercase">Cartão</span>
-            <select
-              className="mt-1.5 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100"
-              disabled={cardsForSelectedAccount.length === 0}
-              onChange={(event) => setCardId(event.target.value)}
-              value={cardId}
-            >
-              <option value="">Todos os cartões</option>
-              {cardsForSelectedAccount.map((card) => (
-                <option key={card.id} value={card.id}>
-                  {card.label} · final {card.last_four}
-                </option>
-              ))}
-            </select>
-          </label>
-        </section>
-
-        {error && <p className="mt-6 rounded-xl bg-rose-50 p-4 text-sm text-rose-800">{error}</p>}
-
-        <section className="mt-6 grid gap-4 sm:grid-cols-3">
-          <SummaryCard label="Entradas e estornos" value={absoluteCurrencyFormatter.format(summary.inflows)} tone="emerald" />
-          <SummaryCard label="Saídas e compras" value={absoluteCurrencyFormatter.format(summary.outflows)} tone="rose" />
-          <SummaryCard label="Resultado do período" value={currencyFormatter.format(summary.net)} tone="slate" />
-        </section>
-
-        <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.65fr)]">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-            <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-              <h2 className="text-lg font-bold text-slate-950">Evolução dos últimos 6 meses</h2>
-              <p className="text-sm text-slate-600">Entradas, saídas e resultado</p>
+    <main className="app-page">
+      <div className="page-container">
+        <section className="relative overflow-hidden rounded-[1.7rem] bg-[#112b22] px-5 py-6 text-white shadow-[0_24px_55px_rgba(12,45,34,0.17)] sm:px-7 sm:py-7 lg:px-9 lg:py-8">
+          <div className="pointer-events-none absolute -top-28 -right-20 size-72 rounded-full border border-emerald-300/10 bg-emerald-300/5" />
+          <div className="pointer-events-none absolute -right-5 -bottom-32 size-64 rounded-full border-[38px] border-white/[0.025]" />
+          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="flex items-center gap-2 text-[11px] font-bold tracking-[0.17em] text-emerald-300 uppercase">
+                <TrendingUp aria-hidden="true" size={14} />
+                Resumo financeiro
+              </p>
+              <h1 className="mt-3 text-3xl font-bold tracking-[-0.045em] sm:text-[2.45rem]">Seu mês em foco</h1>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-emerald-50/65">
+                Uma visão clara de tudo que entrou, saiu e merece sua atenção em {monthLabel(month)}.
+              </p>
             </div>
-            {evolutionTransactions.length > 0 ? (
-              <MonthlyEvolution months={monthlyEvolution} />
-            ) : (
-              <EmptyState text="A evolução aparece quando houver lançamentos em mais de um período." />
-            )}
+            <button className="inline-flex w-fit items-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-bold text-[#0b6549] shadow-xl shadow-black/10 transition hover:-translate-y-0.5 hover:bg-emerald-50" onClick={onImport} type="button">
+              <FileUp aria-hidden="true" size={18} />
+              Importar arquivo
+              <ArrowRight aria-hidden="true" size={16} />
+            </button>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-            <h2 className="text-lg font-bold text-slate-950">Conta x cartão</h2>
-            <p className="mt-1 text-sm text-slate-600">Compras e saídas no mês selecionado.</p>
-            {originBreakdown.some((origin) => origin.amount > 0) ? (
-              <div className="mt-5 space-y-5">
-                {originBreakdown.map((origin) => (
-                  <div key={origin.label}>
-                    <div className="flex items-center justify-between gap-3 text-sm">
-                      <span className="font-medium text-slate-800">{origin.label}</span>
-                      <span className="font-semibold text-slate-950">{absoluteCurrencyFormatter.format(origin.amount)}</span>
-                    </div>
-                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
-                      <div className="h-full rounded-full" style={{ backgroundColor: origin.color, width: `${(origin.amount / largestOriginAmount) * 100}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <EmptyState text="A comparação aparece depois de importar movimentações de conta ou cartão." />
-            )}
+          <div className="relative mt-7 grid gap-3 border-t border-white/10 pt-5 md:grid-cols-3">
+            <FilterControl icon={CalendarDays} label="Período">
+              <input className="form-control border-white/10 bg-white/8 text-white scheme-dark hover:border-white/20 focus:border-emerald-300" onChange={(event) => setMonth(event.target.value)} type="month" value={month} />
+            </FilterControl>
+            <FilterControl icon={Landmark} label="Conta">
+              <select className="form-control border-white/10 bg-[#19362c] text-white hover:border-white/20 focus:border-emerald-300" onChange={(event) => { setAccountId(event.target.value); setCardId('') }} value={accountId}>
+                <option value="">Todas as contas</option>
+                {accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
+              </select>
+            </FilterControl>
+            <FilterControl icon={CreditCard} label="Cartão">
+              <select className="form-control border-white/10 bg-[#19362c] text-white hover:border-white/20 focus:border-emerald-300" disabled={cardsForSelectedAccount.length === 0} onChange={(event) => setCardId(event.target.value)} value={cardId}>
+                <option value="">Todos os cartões</option>
+                {cardsForSelectedAccount.map((card) => <option key={card.id} value={card.id}>{card.label} · final {card.last_four}</option>)}
+              </select>
+            </FilterControl>
           </div>
         </section>
 
-        <section className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-            <h2 className="text-lg font-bold text-slate-950">Gastos por categoria</h2>
+        {error && <p className="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">{error}</p>}
+
+        <section className="mt-5 grid gap-3 sm:grid-cols-3">
+          <SummaryCard detail="Receitas e créditos" icon={ArrowDownLeft} label="Entradas" value={absoluteCurrencyFormatter.format(summary.inflows)} tone="emerald" />
+          <SummaryCard detail="Despesas e compras" icon={ArrowUpRight} label="Saídas" value={absoluteCurrencyFormatter.format(summary.outflows)} tone="rose" />
+          <SummaryCard detail={summary.net >= 0 ? 'Saldo positivo no mês' : 'Atenção ao saldo do mês'} icon={Wallet} label="Resultado" value={currencyFormatter.format(summary.net)} tone={summary.net >= 0 ? 'blue' : 'amber'} />
+        </section>
+
+        <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.42fr)_minmax(20rem,0.58fr)]">
+          <div className="surface-card p-5 sm:p-6">
+            <SectionHeader description="Compare receitas, despesas e resultado ao longo do tempo." icon={TrendingUp} title="Evolução em 6 meses" />
+            {evolutionTransactions.length > 0 ? <MonthlyEvolution months={monthlyEvolution} /> : <EmptyState text="A evolução aparece quando houver lançamentos em mais de um período." />}
+          </div>
+
+          <div className="surface-card p-5 sm:p-6">
+            <SectionHeader description="De onde vieram suas saídas neste mês." icon={CircleDollarSign} title="Origem dos gastos" />
+            {originTotal > 0 ? (
+              <div className="mt-6 flex flex-col items-center gap-6 sm:flex-row xl:flex-col 2xl:flex-row">
+                <div className="relative grid size-36 shrink-0 place-items-center rounded-full" style={{ background: `conic-gradient(#2563EB 0 ${(originBreakdown[0].amount / originTotal) * 100}%, #DB2777 ${(originBreakdown[0].amount / originTotal) * 100}% 100%)` }}>
+                  <div className="grid size-[6.7rem] place-items-center rounded-full bg-white text-center shadow-inner">
+                    <span><span className="block text-[10px] font-bold tracking-wider text-slate-400 uppercase">Total</span><span className="mt-1 block text-sm font-bold text-slate-900">{absoluteCurrencyFormatter.format(originTotal)}</span></span>
+                  </div>
+                </div>
+                <div className="w-full space-y-4">
+                  {originBreakdown.map((origin, index) => (
+                    <div className="flex items-center gap-3" key={origin.label}>
+                      <span className="grid size-9 shrink-0 place-items-center rounded-xl" style={{ backgroundColor: `${origin.color}12`, color: origin.color }}>{index === 0 ? <Landmark size={17} /> : <CreditCard size={17} />}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-baseline justify-between gap-3"><span className="text-xs font-semibold text-slate-600">{origin.label}</span><span className="text-[11px] font-bold text-slate-400">{Math.round((origin.amount / originTotal) * 100)}%</span></div>
+                        <p className="mt-0.5 text-sm font-bold text-slate-900">{absoluteCurrencyFormatter.format(origin.amount)}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : <EmptyState text="A comparação aparece depois de importar movimentações de conta ou cartão." />}
+          </div>
+        </section>
+
+        <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(18rem,0.72fr)_minmax(0,1.28fr)]">
+          <div className="surface-card p-5 sm:p-6">
+            <SectionHeader description="As categorias que mais pesaram no período." icon={Layers3} title="Gastos por categoria" />
             {categoryBreakdown.length > 0 ? (
-              <div className="mt-5 space-y-4">
-                {categoryBreakdown.map((category) => (
+              <div className="mt-6 space-y-5">
+                {categoryBreakdown.slice(0, 7).map((category) => (
                   <div key={category.name}>
                     <div className="flex items-center justify-between gap-4 text-sm">
-                      <span className="font-medium text-slate-800">{category.name}</span>
-                      <span className="whitespace-nowrap font-semibold text-slate-950">
-                        {absoluteCurrencyFormatter.format(category.amount)}
-                      </span>
+                      <span className="flex min-w-0 items-center gap-2.5 font-semibold text-slate-700"><span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: category.color }} /><span className="truncate">{category.name}</span></span>
+                      <span className="whitespace-nowrap text-xs font-bold text-slate-900">{absoluteCurrencyFormatter.format(category.amount)}</span>
                     </div>
-                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100">
-                      <div
-                        className="h-full rounded-full"
-                        style={{ backgroundColor: category.color, width: `${(category.amount / largestCategoryAmount) * 100}%` }}
-                      />
-                    </div>
+                    <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full" style={{ backgroundColor: category.color, width: `${(category.amount / largestCategoryAmount) * 100}%` }} /></div>
                   </div>
                 ))}
               </div>
-            ) : (
-              <EmptyState text="As categorias aparecem aqui depois da primeira importação." />
-            )}
+            ) : <EmptyState text="As categorias aparecem aqui depois da primeira importação." />}
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="border-b border-slate-200 p-5 sm:p-6">
-              <h2 className="text-lg font-bold text-slate-950">Lançamentos recentes</h2>
-              <p className="mt-1 text-sm text-slate-600">{transactions.length} lançamento(s) no período selecionado.</p>
+          <div className="surface-card overflow-hidden">
+            <div className="flex items-start justify-between gap-4 border-b border-[#e5ece8] p-5 sm:p-6">
+              <SectionHeader description={`${transactions.length} lançamento(s) no período selecionado.`} icon={ReceiptText} title="Movimentações recentes" />
+              <span className="hidden rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-bold text-emerald-700 sm:inline">Atualizado</span>
             </div>
-            {isLoading ? (
-              <p className="p-6 text-sm text-slate-600">Carregando lançamentos…</p>
-            ) : transactions.length > 0 ? (
-              <div className="max-h-[33rem] overflow-auto">
-                <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-                  <thead className="sticky top-0 bg-slate-50 text-xs tracking-wide text-slate-500 uppercase">
-                    <tr>
-                      <th className="px-5 py-3 font-semibold">Data</th>
-                      <th className="px-5 py-3 font-semibold">Lançamento</th>
-                      <th className="px-5 py-3 font-semibold">Categoria</th>
-                      <th className="px-5 py-3 text-right font-semibold">Valor</th>
-                    </tr>
+            {isLoading ? <p className="p-6 text-sm text-slate-500">Carregando lançamentos…</p> : transactions.length > 0 ? (
+              <div className="max-h-[34rem] overflow-auto">
+                <table className="data-table min-w-full text-left text-sm">
+                  <thead className="sticky top-0 z-10 bg-[#f8faf9] text-[10px] font-bold tracking-[0.1em] text-slate-400 uppercase">
+                    <tr><th className="px-5 py-3.5">Data</th><th className="px-5 py-3.5">Lançamento</th><th className="hidden px-5 py-3.5 md:table-cell">Categoria</th><th className="px-5 py-3.5 text-right">Valor</th></tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {transactions.map((transaction) => (
-                      <tr key={transaction.id}>
-                        <td className="whitespace-nowrap px-5 py-4 text-slate-600">{formatDate(transaction.date)}</td>
-                        <td className="px-5 py-4">
-                          <p className="font-medium text-slate-900">{transaction.description}</p>
-                          <p className="mt-1 text-xs text-slate-500">
-                            {cardNameById.get(transaction.card_id) ?? accountNameById.get(transaction.account_id)}
-                          </p>
-                        </td>
-                        <td className="px-5 py-4 text-slate-600">
-                          {categoryById.get(transaction.category_id)?.name ?? 'Sem categoria'}
-                        </td>
-                        <td
-                          className={`whitespace-nowrap px-5 py-4 text-right font-semibold ${
-                            Number(transaction.amount) < 0 ? 'text-rose-700' : 'text-emerald-700'
-                          }`}
-                        >
-                          {currencyFormatter.format(Number(transaction.amount))}
-                        </td>
-                      </tr>
-                    ))}
+                  <tbody className="divide-y divide-[#edf2ef]">
+                    {transactions.map((transaction) => {
+                      const category = categoryById.get(transaction.category_id)
+                      return (
+                        <tr key={transaction.id}>
+                          <td className="whitespace-nowrap px-5 py-4 text-xs text-slate-500">{formatDate(transaction.date)}</td>
+                          <td className="max-w-xs px-5 py-4"><p className="truncate font-semibold text-slate-800">{transaction.description}</p><p className="mt-1 truncate text-[11px] text-slate-400">{cardNameById.get(transaction.card_id) ?? accountNameById.get(transaction.account_id)}</p></td>
+                          <td className="hidden px-5 py-4 md:table-cell"><span className="inline-flex items-center gap-1.5 rounded-full bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600"><span className="size-1.5 rounded-full" style={{ backgroundColor: category?.color ?? '#94A3B8' }} />{category?.name ?? 'Sem categoria'}</span></td>
+                          <td className={`whitespace-nowrap px-5 py-4 text-right text-xs font-bold ${Number(transaction.amount) < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>{currencyFormatter.format(Number(transaction.amount))}</td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
-            ) : (
-              <div className="p-6">
-                <EmptyState text="Nenhum lançamento encontrado para esses filtros." />
-              </div>
-            )}
+            ) : <div className="p-6"><EmptyState text="Nenhum lançamento encontrado para esses filtros." /></div>}
           </div>
         </section>
       </div>
@@ -436,23 +394,27 @@ export function DashboardPage({ onImport }) {
   )
 }
 
-function SummaryCard({ label, value, tone }) {
-  const color = {
-    emerald: 'text-emerald-700',
-    rose: 'text-rose-700',
-    slate: 'text-slate-950',
+function FilterControl({ children, icon: Icon, label }) {
+  return <label><span className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold tracking-wider text-emerald-100/65 uppercase"><Icon aria-hidden="true" size={12} />{label}</span>{children}</label>
+}
+
+function SectionHeader({ description, icon: Icon, title }) {
+  return <div className="flex items-start gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><Icon aria-hidden="true" size={18} strokeWidth={1.9} /></span><div><h2 className="section-title">{title}</h2><p className="section-description">{description}</p></div></div>
+}
+
+function SummaryCard({ detail, icon: Icon, label, value, tone }) {
+  const styles = {
+    emerald: { icon: 'bg-emerald-50 text-emerald-700', value: 'text-emerald-700' },
+    rose: { icon: 'bg-rose-50 text-rose-600', value: 'text-rose-600' },
+    blue: { icon: 'bg-sky-50 text-sky-700', value: 'text-slate-950' },
+    amber: { icon: 'bg-amber-50 text-amber-700', value: 'text-amber-700' },
   }[tone]
 
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">{label}</p>
-      <p className={`mt-2 text-2xl font-bold ${color}`}>{value}</p>
-    </div>
-  )
+  return <div className="surface-card flex items-center gap-4 p-4 sm:p-5"><span className={`grid size-11 shrink-0 place-items-center rounded-2xl ${styles.icon}`}><Icon aria-hidden="true" size={21} strokeWidth={1.9} /></span><div className="min-w-0"><p className="text-[10px] font-bold tracking-[0.1em] text-slate-400 uppercase">{label}</p><p className={`mt-1 truncate text-xl font-bold tracking-[-0.025em] sm:text-2xl ${styles.value}`}>{value}</p><p className="mt-0.5 text-[11px] text-slate-400">{detail}</p></div></div>
 }
 
 function EmptyState({ text }) {
-  return <p className="mt-5 rounded-xl bg-slate-50 p-4 text-sm text-slate-600">{text}</p>
+  return <p className="mt-5 rounded-xl border border-dashed border-slate-200 bg-slate-50/70 p-4 text-sm leading-6 text-slate-500">{text}</p>
 }
 
 function MonthlyEvolution({ months }) {

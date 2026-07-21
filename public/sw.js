@@ -1,14 +1,22 @@
-const VERSION = 'v3'
+const VERSION = 'v5'
 const APP_CACHE = `controle-financeiro-app-${VERSION}`
 const DATA_CACHE = `controle-financeiro-data-${VERSION}`
+const IS_LOCAL_DEVELOPMENT = ['localhost', '127.0.0.1'].includes(self.location.hostname)
 
 const appShellUrl = () => new URL('./', self.registration.scope).href
 const appShellAssets = () => [
   appShellUrl(),
+  new URL('favicon.ico', self.registration.scope).href,
+  new URL('favicon-16x16.png', self.registration.scope).href,
+  new URL('favicon-32x32.png', self.registration.scope).href,
   new URL('manifest.webmanifest', self.registration.scope).href,
+  new URL('icons/app-icon-44.png', self.registration.scope).href,
+  new URL('icons/app-icon-150.png', self.registration.scope).href,
   new URL('icons/app-icon-192.png', self.registration.scope).href,
   new URL('icons/app-icon-512.png', self.registration.scope).href,
+  new URL('icons/app-icon-1024.png', self.registration.scope).href,
   new URL('icons/apple-touch-icon.png', self.registration.scope).href,
+  new URL('icons/mstile-150x150.png', self.registration.scope).href,
 ]
 
 const cacheAppShell = async () => {
@@ -60,6 +68,11 @@ const networkFirst = async (request, cacheName, fallback) => {
 }
 
 self.addEventListener('install', (event) => {
+  if (IS_LOCAL_DEVELOPMENT) {
+    event.waitUntil(self.skipWaiting())
+    return
+  }
+
   event.waitUntil(cacheAppShell().then(() => self.skipWaiting()))
 })
 
@@ -70,6 +83,17 @@ self.addEventListener('message', (event) => {
 })
 
 self.addEventListener('activate', (event) => {
+  if (IS_LOCAL_DEVELOPMENT) {
+    event.waitUntil(
+      caches
+        .keys()
+        .then((keys) => Promise.all(keys.filter((key) => key.startsWith('controle-financeiro-')).map((key) => caches.delete(key))))
+        .then(() => self.clients.claim())
+        .then(() => self.registration.unregister()),
+    )
+    return
+  }
+
   event.waitUntil(
     caches
       .keys()
@@ -85,6 +109,10 @@ self.addEventListener('activate', (event) => {
 })
 
 self.addEventListener('fetch', (event) => {
+  if (IS_LOCAL_DEVELOPMENT) {
+    return
+  }
+
   const { request } = event
 
   if (request.method !== 'GET') {

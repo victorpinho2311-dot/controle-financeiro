@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { CircleDollarSign, ReceiptText, Search, SlidersHorizontal } from 'lucide-react'
 import { getSupabaseClient } from '../../lib/supabase.js'
 
 const currencyFormatter = new Intl.NumberFormat('pt-BR', {
@@ -140,6 +141,10 @@ export function TransactionsPage() {
       ),
     [transactions, normalizedSearch],
   )
+  const filteredTotal = filteredTransactions.reduce(
+    (total, transaction) => total + Number(transaction.amount),
+    0,
+  )
 
   const updateTransaction = async (id, changes, successMessage) => {
     setIsSaving(true)
@@ -230,15 +235,23 @@ export function TransactionsPage() {
   }
 
   return (
-    <main className="min-h-svh bg-slate-50 px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl">
-        <header className="mb-8">
-          <p className="text-sm font-semibold tracking-[0.18em] text-emerald-700 uppercase">Controle financeiro</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-slate-950 sm:text-4xl">Lançamentos</h1>
-          <p className="mt-2 text-slate-600">Consulte, corrija ou exclua movimentações já importadas.</p>
+    <main className="app-page">
+      <div className="page-container">
+        <header className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="page-eyebrow"><ReceiptText aria-hidden="true" size={14} />Histórico financeiro</p>
+            <h1 className="page-title">Seus lançamentos</h1>
+            <p className="page-description">Encontre, categorize e corrija cada movimentação em um só lugar.</p>
+          </div>
+          <div className="flex w-fit items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-3">
+            <span className="grid size-9 place-items-center rounded-xl bg-white text-emerald-700 shadow-sm"><CircleDollarSign aria-hidden="true" size={18} /></span>
+            <div><p className="text-[10px] font-bold tracking-wider text-emerald-700 uppercase">Saldo filtrado</p><p className={`mt-0.5 text-sm font-bold ${filteredTotal < 0 ? 'text-rose-600' : 'text-emerald-800'}`}>{currencyFormatter.format(filteredTotal)}</p></div>
+          </div>
         </header>
 
-        <section className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-2 xl:grid-cols-5">
+        <section className="surface-card p-4 sm:p-5">
+          <div className="mb-4 flex items-center gap-2 text-xs font-bold text-slate-700"><SlidersHorizontal aria-hidden="true" className="text-emerald-700" size={16} />Filtros de busca</div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
           <FilterLabel label="Mês">
             <input className="filter-input" onChange={(event) => setMonth(event.target.value)} type="month" value={month} />
           </FilterLabel>
@@ -268,16 +281,17 @@ export function TransactionsPage() {
             </select>
           </FilterLabel>
           <FilterLabel label="Buscar">
-            <input className="filter-input" onChange={(event) => setSearchTerm(event.target.value)} placeholder="Descrição" type="search" value={searchTerm} />
+            <div className="relative"><Search aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-slate-400" size={15} /><input className="filter-input pl-9!" onChange={(event) => setSearchTerm(event.target.value)} placeholder="Descrição" type="search" value={searchTerm} /></div>
           </FilterLabel>
+          </div>
         </section>
 
         {message && <p className="mt-5 rounded-xl bg-sky-50 p-4 text-sm text-sky-900">{message}</p>}
 
-        <section className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-200 p-5 sm:p-6">
-            <h2 className="text-lg font-bold text-slate-950">Resultados</h2>
-            <p className="mt-1 text-sm text-slate-600">{filteredTransactions.length} lançamento(s) encontrado(s).</p>
+        <section className="surface-card mt-5 overflow-hidden">
+          <div className="flex items-start gap-3 border-b border-[#e5ece8] p-5 sm:p-6">
+            <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><ReceiptText aria-hidden="true" size={18} /></span>
+            <div><h2 className="section-title">Resultados</h2><p className="section-description">{filteredTransactions.length} lançamento(s) encontrado(s).</p></div>
           </div>
 
           {isLoading ? (
@@ -286,8 +300,8 @@ export function TransactionsPage() {
             <p className="p-6 text-sm text-slate-600">Nenhum lançamento encontrado para os filtros escolhidos.</p>
           ) : (
             <div className="max-h-[42rem] overflow-auto">
-              <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-                <thead className="sticky top-0 bg-slate-50 text-xs tracking-wide text-slate-500 uppercase">
+              <table className="data-table min-w-full divide-y divide-slate-200 text-left text-sm">
+                <thead className="sticky top-0 bg-[#f8faf9] text-[10px] tracking-[0.1em] text-slate-400 uppercase">
                   <tr>
                     <th className="px-5 py-3 font-semibold">Data</th>
                     <th className="px-5 py-3 font-semibold">Lançamento</th>
