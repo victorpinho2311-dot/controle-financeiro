@@ -52,7 +52,7 @@ Deno.serve(async (request) => {
   }
 
   try {
-    const apiKey = Deno.env.get('ANTHROPIC_API_KEY')
+    const apiKey = Deno.env.get('GEMINI_API_KEY')
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
     const supabaseSecretKey = getSecretKey()
 
@@ -78,7 +78,7 @@ Deno.serve(async (request) => {
     }
 
     if (!apiKey) {
-      return json({ error: 'Configure o secret ANTHROPIC_API_KEY antes de gerar insights.' }, 503)
+      return json({ error: 'Configure o secret GEMINI_API_KEY antes de gerar insights.' }, 503)
     }
 
     const { month, accountId, cardId } = await request.json()
@@ -156,42 +156,56 @@ Deno.serve(async (request) => {
       largestExpenses: largestTransactions,
     }
 
-    const anthropicResponse = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: Deno.env.get('ANTHROPIC_ANALYSIS_MODEL') ?? 'claude-sonnet-5',
-        max_tokens: 900,
-        system:
-          'Você é um analista financeiro pessoal prudente. Use apenas os dados recebidos. Não faça promessas, não prescreva investimentos e não dê conselhos genéricos. Seja específico, curto e ancorado nos números.',
-        messages: [
-          {
-            role: 'user',
-            content: `Analise os dados financeiros abaixo. Retorne SOMENTE JSON válido com este formato: {"summary":"...","highlights":["..."],"suggestions":["..."],"alerts":["..."]}. Dê entre 2 e 5 itens por lista quando houver base nos dados. Dados: ${JSON.stringify(prompt)}`,
+    const model = Deno.env.get('GEMINI_ANALYSIS_MODEL') ?? 'gemini-2.5-flash'
+    const geminiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-goog-api-key': apiKey,
+        },
+        body: JSON.stringify({
+          systemInstruction: {
+            parts: [
+              {
+                text: 'Você é um analista financeiro pessoal prudente. Use apenas os dados recebidos. Não faça promessas, não prescreva investimentos e não dê conselhos genéricos. Seja específico, curto e ancorado nos números.',
+              },
+            ],
           },
-        ],
-      }),
-    })
+          generationConfig: {
+            maxOutputTokens: 900,
+            responseMimeType: 'application/json',
+            temperature: 0.2,
+          },
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                {
+                  text: `Analise os dados financeiros abaixo. Retorne um JSON válido com este formato: {"summary":"...","highlights":["..."],"suggestions":["..."],"alerts":["..."]}. Dê entre 2 e 5 itens por lista quando houver base nos dados. Dados: ${JSON.stringify(prompt)}`,
+                },
+              ],
+            },
+          ],
+        }),
+      },
+    )
 
-    if (!anthropicResponse.ok) {
-      const details = await anthropicResponse.text()
-      console.error('Anthropic API error', anthropicResponse.status, details)
-      return json({ error: 'A Anthropic não conseguiu gerar a análise agora.' }, 502)
+    if (!geminiResponse.ok) {
+      const details = await geminiResponse.text()
+      console.error('Gemini API error', geminiResponse.status, details)
+      return json({ error: 'O Gemini não conseguiu gerar a análise agora.' }, 502)
     }
 
-    const anthropicPayload = await anthropicResponse.json()
-    const content = anthropicPayload.content?.find((item: { type: string }) => item.type === 'text')?.text
+    const geminiPayload = await geminiResponse.json()
+    const content = geminiPayload.candidates?.[0]?.content?.parts?.find((item: { text?: string }) => item.text)?.text
 
     if (!content) {
-      return json({ error: 'A resposta da Anthropic não trouxe uma análise em texto.' }, 502)
+      return json({ error: 'A resposta do Gemini não trouxe uma análise em texto.' }, 502)
     }
 
     const insight = extractJson(content)
-    const model = anthropicPayload.model ?? Deno.env.get('ANTHROPIC_ANALYSIS_MODEL') ?? 'claude-sonnet-5'
     const { error: saveError } = await supabase.from('insights').insert({
       period,
       model,
