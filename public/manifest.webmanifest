@@ -1,6 +1,6 @@
 {
-  "name": "Controle Financeiro",
-  "short_name": "Finanças",
+  "name": "Meu Financeiro",
+  "short_name": "Financeiro",
   "description": "Controle financeiro pessoal com importação de extratos e faturas.",
   "lang": "pt-BR",
   "id": "./",
@@ -8,10 +8,22 @@
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#f8fafc",
-  "theme_color": "#047857",
+  "background_color": "#f4f7f5",
+  "theme_color": "#10271f",
   "categories": ["finance", "productivity"],
   "icons": [
+    {
+      "src": "icons/app-icon-44.png",
+      "sizes": "44x44",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/app-icon-150.png",
+      "sizes": "150x150",
+      "type": "image/png",
+      "purpose": "any"
+    },
     {
       "src": "icons/app-icon-192.png",
       "sizes": "192x192",
@@ -25,10 +37,10 @@
       "purpose": "any"
     },
     {
-      "src": "icons/app-icon-maskable-512.png",
-      "sizes": "512x512",
+      "src": "icons/app-icon-1024.png",
+      "sizes": "1024x1024",
       "type": "image/png",
-      "purpose": "maskable"
+      "purpose": "any"
     }
   ]
 }

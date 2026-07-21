@@ -1,4 +1,4 @@
-const VERSION = 'v4'
+const VERSION = 'v5'
 const APP_CACHE = `controle-financeiro-app-${VERSION}`
 const DATA_CACHE = `controle-financeiro-data-${VERSION}`
 const IS_LOCAL_DEVELOPMENT = ['localhost', '127.0.0.1'].includes(self.location.hostname)
@@ -6,10 +6,17 @@ const IS_LOCAL_DEVELOPMENT = ['localhost', '127.0.0.1'].includes(self.location.h
 const appShellUrl = () => new URL('./', self.registration.scope).href
 const appShellAssets = () => [
   appShellUrl(),
+  new URL('favicon.ico', self.registration.scope).href,
+  new URL('favicon-16x16.png', self.registration.scope).href,
+  new URL('favicon-32x32.png', self.registration.scope).href,
   new URL('manifest.webmanifest', self.registration.scope).href,
+  new URL('icons/app-icon-44.png', self.registration.scope).href,
+  new URL('icons/app-icon-150.png', self.registration.scope).href,
   new URL('icons/app-icon-192.png', self.registration.scope).href,
   new URL('icons/app-icon-512.png', self.registration.scope).href,
+  new URL('icons/app-icon-1024.png', self.registration.scope).href,
   new URL('icons/apple-touch-icon.png', self.registration.scope).href,
+  new URL('icons/mstile-150x150.png', self.registration.scope).href,
 ]
 
 const cacheAppShell = async () => {
