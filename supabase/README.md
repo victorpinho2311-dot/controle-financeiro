@@ -66,4 +66,4 @@ Nunca coloque uma secret key, service_role key ou a chave do Gemini em uma vari�
 
 Guarde a chave da API do Gemini somente em **Edge Functions > Secrets** no Dashboard do Supabase, com o nome `GEMINI_API_KEY`. A função `analyze` lê esse secret no servidor; ele não é enviado ao PWA nem ao GitHub.
 
-O modelo padrão é `gemini-2.5-flash`. Para trocar o modelo futuramente, crie também o secret opcional `GEMINI_ANALYSIS_MODEL`.
+O modelo padrão é `gemini-3.5-flash`. Para trocar o modelo futuramente, crie também o secret opcional `GEMINI_ANALYSIS_MODEL`.
