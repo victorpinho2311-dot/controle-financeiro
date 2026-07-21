@@ -57,6 +57,19 @@ const getPreviousMonths = (endMonth, count = 6) => {
   })
 }
 
+const getPeriodOptions = (endMonth, count = 12) =>
+  Array.from({ length: count }, (_, index) => {
+    const [year, monthNumber] = endMonth.split('-').map(Number)
+    const date = new Date(year, monthNumber - count + index, 1)
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+  }).reverse()
+
+const bankLabel = (bank) =>
+  bank ? bank.replace(/\b\w/g, (letter) => letter.toUpperCase()) : 'Sem instituição'
+
+const isTransfer = (transaction, categoriesById) =>
+  categoriesById.get(transaction.category_id)?.kind === 'transfer'
+
 export function DashboardPage({ onImport }) {
   const [accounts, setAccounts] = useState([])
   const [cards, setCards] = useState([])
@@ -64,7 +77,8 @@ export function DashboardPage({ onImport }) {
   const [transactions, setTransactions] = useState([])
   const [evolutionTransactions, setEvolutionTransactions] = useState([])
   const [month, setMonth] = useState(currentMonth)
-  const [accountId, setAccountId] = useState('')
+  const [bank, setBank] = useState('')
+  const [sourceType, setSourceType] = useState('')
   const [cardId, setCardId] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
@@ -75,7 +89,7 @@ export function DashboardPage({ onImport }) {
     const loadMetadata = async () => {
       try {
         const [accountsResult, cardsResult, categoriesResult] = await Promise.all([
-          getSupabaseClient().from('accounts').select('id, name, type').order('name'),
+          getSupabaseClient().from('accounts').select('id, name, type, bank').order('name'),
           getSupabaseClient().from('cards').select('id, account_id, label, last_four').order('label'),
           getSupabaseClient().from('categories').select('id, name, kind, color').order('name'),
         ])
@@ -122,8 +136,12 @@ export function DashboardPage({ onImport }) {
           .order('date', { ascending: false })
           .limit(500)
 
-        if (accountId) {
-          query = query.eq('account_id', accountId)
+        const accountIds = accounts
+          .filter((account) => (!bank || account.bank === bank) && (!sourceType || account.type === sourceType))
+          .map((account) => account.id)
+
+        if (bank || sourceType) {
+          query = query.in('account_id', accountIds)
         }
 
         if (cardId) {
@@ -134,14 +152,14 @@ export function DashboardPage({ onImport }) {
         const historicalStart = getMonthBounds(historicalMonths[0]).start
         let evolutionQuery = getSupabaseClient()
           .from('transactions')
-          .select('date, amount, card_id')
+          .select('date, amount, card_id, category_id')
           .gte('date', historicalStart)
           .lte('date', end)
           .order('date', { ascending: true })
           .limit(3000)
 
-        if (accountId) {
-          evolutionQuery = evolutionQuery.eq('account_id', accountId)
+        if (bank || sourceType) {
+          evolutionQuery = evolutionQuery.in('account_id', accountIds)
         }
 
         if (cardId) {
@@ -175,23 +193,32 @@ export function DashboardPage({ onImport }) {
     return () => {
       isCurrent = false
     }
-  }, [month, accountId, cardId])
+  }, [month, bank, sourceType, cardId, accounts])
 
-  const cardsForSelectedAccount = cards.filter((card) => !accountId || card.account_id === accountId)
+  const banks = [...new Set(accounts.map((account) => account.bank).filter(Boolean))]
+  const accountIdsForFilter = accounts
+    .filter((account) => (!bank || account.bank === bank) && (!sourceType || account.type === sourceType))
+    .map((account) => account.id)
+  const cardsForSelectedAccount = cards.filter(
+    (card) => accountIdsForFilter.includes(card.account_id),
+  )
   const accountNameById = new Map(accounts.map((account) => [account.id, account.name]))
   const cardNameById = new Map(cards.map((card) => [card.id, card.label]))
-  const categoryById = new Map(categories.map((category) => [category.id, category]))
+  const categoryById = useMemo(
+    () => new Map(categories.map((category) => [category.id, category])),
+    [categories],
+  )
 
   const summary = useMemo(() => {
     const inflows = transactions
-      .filter((transaction) => transaction.amount > 0)
+      .filter((transaction) => transaction.amount > 0 && !isTransfer(transaction, categoryById))
       .reduce((total, transaction) => total + Number(transaction.amount), 0)
     const outflows = transactions
-      .filter((transaction) => transaction.amount < 0)
+      .filter((transaction) => transaction.amount < 0 && !isTransfer(transaction, categoryById))
       .reduce((total, transaction) => total + Math.abs(Number(transaction.amount)), 0)
 
     return { inflows, outflows, net: inflows - outflows }
-  }, [transactions])
+  }, [transactions, categoryById])
 
   const categoryBreakdown = useMemo(() => {
     const totals = new Map()
@@ -232,6 +259,10 @@ export function DashboardPage({ onImport }) {
       }
 
       const amount = Number(transaction.amount)
+      if (isTransfer(transaction, categoryById)) {
+        continue
+      }
+
       if (amount >= 0) {
         item.inflows += amount
       } else {
@@ -241,21 +272,21 @@ export function DashboardPage({ onImport }) {
     }
 
     return months.map((period) => totals.get(period))
-  }, [month, evolutionTransactions])
+  }, [month, evolutionTransactions, categoryById])
 
   const originBreakdown = useMemo(() => {
     const accountExpenses = transactions
-      .filter((transaction) => !transaction.card_id && Number(transaction.amount) < 0)
+      .filter((transaction) => !transaction.card_id && Number(transaction.amount) < 0 && !isTransfer(transaction, categoryById))
       .reduce((total, transaction) => total + Math.abs(Number(transaction.amount)), 0)
     const cardExpenses = transactions
-      .filter((transaction) => transaction.card_id && Number(transaction.amount) < 0)
+      .filter((transaction) => transaction.card_id && Number(transaction.amount) < 0 && !isTransfer(transaction, categoryById))
       .reduce((total, transaction) => total + Math.abs(Number(transaction.amount)), 0)
 
     return [
       { label: 'Conta corrente', amount: accountExpenses, color: '#2563EB' },
       { label: 'Cartões', amount: cardExpenses, color: '#DB2777' },
     ]
-  }, [transactions])
+  }, [transactions, categoryById])
 
   const largestCategoryAmount = categoryBreakdown[0]?.amount ?? 1
   const originTotal = originBreakdown.reduce((total, origin) => total + origin.amount, 0)
@@ -284,14 +315,23 @@ export function DashboardPage({ onImport }) {
             </button>
           </div>
 
-          <div className="relative mt-7 grid gap-3 border-t border-white/10 pt-5 md:grid-cols-3">
+          <div className="relative mt-7 grid gap-3 border-t border-white/10 pt-5 md:grid-cols-2 xl:grid-cols-4">
             <FilterControl icon={CalendarDays} label="Período">
-              <input className="form-control border-white/10 bg-white/8 text-white scheme-dark hover:border-white/20 focus:border-emerald-300" onChange={(event) => setMonth(event.target.value)} type="month" value={month} />
+              <select className="form-control border-white/10 bg-[#19362c] text-white hover:border-white/20 focus:border-emerald-300" onChange={(event) => setMonth(event.target.value)} value={month}>
+                {getPeriodOptions(currentMonth()).map((period) => <option key={period} value={period}>{monthLabel(period)}</option>)}
+              </select>
             </FilterControl>
             <FilterControl icon={Landmark} label="Conta">
-              <select className="form-control border-white/10 bg-[#19362c] text-white hover:border-white/20 focus:border-emerald-300" onChange={(event) => { setAccountId(event.target.value); setCardId('') }} value={accountId}>
+              <select className="form-control border-white/10 bg-[#19362c] text-white hover:border-white/20 focus:border-emerald-300" onChange={(event) => { setBank(event.target.value); setCardId('') }} value={bank}>
                 <option value="">Todas as contas</option>
-                {accounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
+                {banks.map((accountBank) => <option key={accountBank} value={accountBank}>{bankLabel(accountBank)}</option>)}
+              </select>
+            </FilterControl>
+            <FilterControl icon={Layers3} label="Origem">
+              <select className="form-control border-white/10 bg-[#19362c] text-white hover:border-white/20 focus:border-emerald-300" onChange={(event) => { setSourceType(event.target.value); setCardId('') }} value={sourceType}>
+                <option value="">Conta corrente e cartões</option>
+                <option value="checking">Conta corrente</option>
+                <option value="credit_card">Cartões de crédito</option>
               </select>
             </FilterControl>
             <FilterControl icon={CreditCard} label="Cartão">
@@ -306,9 +346,9 @@ export function DashboardPage({ onImport }) {
         {error && <p className="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">{error}</p>}
 
         <section className="mt-5 grid gap-3 sm:grid-cols-3">
-          <SummaryCard detail="Receitas e créditos" icon={ArrowDownLeft} label="Entradas" value={absoluteCurrencyFormatter.format(summary.inflows)} tone="emerald" />
-          <SummaryCard detail="Despesas e compras" icon={ArrowUpRight} label="Saídas" value={absoluteCurrencyFormatter.format(summary.outflows)} tone="rose" />
-          <SummaryCard detail={summary.net >= 0 ? 'Saldo positivo no mês' : 'Atenção ao saldo do mês'} icon={Wallet} label="Resultado" value={currencyFormatter.format(summary.net)} tone={summary.net >= 0 ? 'blue' : 'amber'} />
+          <SummaryCard detail="Receitas e créditos, sem transferências" icon={ArrowDownLeft} label="Entradas" value={absoluteCurrencyFormatter.format(summary.inflows)} tone="emerald" />
+          <SummaryCard detail="Despesas e compras, sem transferências" icon={ArrowUpRight} label="Saídas" value={absoluteCurrencyFormatter.format(summary.outflows)} tone="rose" />
+          <SummaryCard detail="Entradas menos saídas; não é o saldo bancário" icon={Wallet} label="Fluxo do mês" value={currencyFormatter.format(summary.net)} tone={summary.net >= 0 ? 'blue' : 'amber'} />
         </section>
 
         <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.42fr)_minmax(20rem,0.58fr)]">

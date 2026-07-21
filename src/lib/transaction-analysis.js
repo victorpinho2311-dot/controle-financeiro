@@ -18,11 +18,20 @@ export const isPixTransaction = (transaction) =>
 const sumAmounts = (transactions) =>
   transactions.reduce((total, transaction) => total + transaction.amount, 0)
 
-export const analyzeTransactions = (transactions) => {
-  const all = transactions.map((transaction) => ({
+const isWithinPeriod = (date, periodStart, periodEnd) =>
+  (!periodStart || date >= periodStart) && (!periodEnd || date <= periodEnd)
+
+export const analyzeTransactions = (transactions, { periodStart = null, periodEnd = null } = {}) => {
+  const normalized = transactions.map((transaction) => ({
     ...transaction,
     isInvestment: isInvestmentTransaction(transaction),
   }))
+  // Alguns OFXs do Bradesco trazem lançamentos futuros no fim do arquivo. Eles
+  // devem ficar visíveis para conferência, mas não podem entrar no mês importado.
+  const all = normalized.filter((transaction) => isWithinPeriod(transaction.date, periodStart, periodEnd))
+  const outsidePeriod = normalized.filter(
+    (transaction) => !isWithinPeriod(transaction.date, periodStart, periodEnd),
+  )
   const importable = all.filter((transaction) => !transaction.isInvestment)
   const investments = all.filter((transaction) => transaction.isInvestment)
   const inflows = importable.filter((transaction) => transaction.amount > 0)
@@ -30,6 +39,7 @@ export const analyzeTransactions = (transactions) => {
 
   return {
     all,
+    outsidePeriod,
     importable,
     investments,
     summary: {

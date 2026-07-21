@@ -75,7 +75,7 @@ export function ImportPage() {
         const [accountsResult, categoriesResult, rulesResult] = await Promise.all([
           getSupabaseClient()
             .from('accounts')
-            .select('id, name, type')
+            .select('id, name, type, bank')
             .in('type', ['checking', 'credit_card'])
             .order('name'),
           getSupabaseClient().from('categories').select('id, name, kind').order('kind').order('name'),
@@ -291,12 +291,22 @@ export function ImportPage() {
   }
 
   const selectedAccount = accounts.find((account) => account.id === selectedAccountId)
+  const accountsByBank = accounts.reduce((groups, account) => {
+    const bank = account.bank || 'Outras contas'
+    groups.set(bank, [...(groups.get(bank) ?? []), account])
+    return groups
+  }, new Map())
   const isCreditCard = selectedAccount?.type === 'credit_card'
   const fileTypeLabel = isCreditCard ? 'CSV da fatura' : 'Arquivo OFX'
   const fileAccept = isCreditCard
     ? '.csv,text/csv,text/plain'
     : '.ofx,.qfx,application/x-ofx,text/ofx,text/plain'
-  const analysis = parsedOfx ? analyzeTransactions(parsedOfx.transactions) : null
+  const analysis = parsedOfx
+    ? analyzeTransactions(parsedOfx.transactions, {
+        periodStart: parsedOfx.periodStart,
+        periodEnd: parsedOfx.periodEnd,
+      })
+    : null
   const transactionsForMode = analysis ? getTransactionsForPreviewMode(analysis, previewMode) : []
   const previewModeLabels = isCreditCard
     ? { ...previewModes, account: 'Lançamentos da fatura' }
@@ -337,7 +347,7 @@ export function ImportPage() {
           </div>
           <div className="grid gap-6 md:grid-cols-2">
             <label className="block">
-              <span className="text-sm font-semibold text-slate-800">Conta de destino</span>
+              <span className="text-sm font-semibold text-slate-800">Conta e origem de importação</span>
               <select
                 className="form-control mt-2"
                 disabled={isLoadingAccounts || Boolean(accountsError) || accounts.length === 0}
@@ -360,10 +370,14 @@ export function ImportPage() {
               >
                 {isLoadingAccounts && <option>Carregando contas…</option>}
                 {!isLoadingAccounts && accounts.length === 0 && <option>Nenhuma conta encontrada</option>}
-                {accounts.map((account) => (
-                  <option key={account.id} value={account.id}>
-                    {account.name} · {accountTypeLabel[account.type] ?? account.type}
-                  </option>
+                {[...accountsByBank.entries()].map(([bank, bankAccounts]) => (
+                  <optgroup key={bank} label={bank.toLocaleUpperCase('pt-BR')}>
+                    {bankAccounts.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {accountTypeLabel[account.type] ?? account.type}
+                      </option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
               {accountsError && <p className="mt-2 text-sm text-rose-700">{accountsError}</p>}
@@ -403,7 +417,7 @@ export function ImportPage() {
                     Análise completa {isCreditCard ? 'da fatura' : 'do extrato'}
                   </h2>
                   <p className="mt-1 text-sm text-slate-600">
-                    {analysis.all.length} lançamentos no arquivo
+                    {analysis.all.length} lançamento(s) dentro do período do arquivo
                     {parsedOfx.periodStart && parsedOfx.periodEnd
                       ? ` · ${formatDate(parsedOfx.periodStart)} a ${formatDate(parsedOfx.periodEnd)}`
                       : ''}
@@ -518,6 +532,13 @@ export function ImportPage() {
                 <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
                   {parsedOfx.warnings.length} lançamento(s) não puderam ser lidos e não aparecerão na
                   importação.
+                </p>
+              )}
+
+              {analysis.outsidePeriod.length > 0 && (
+                <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">
+                  {analysis.outsidePeriod.length} lançamento(s) com data fora do período declarado pelo
+                  banco foram ignorados nesta importação. Eles não afetam os totais deste mês.
                 </p>
               )}
 

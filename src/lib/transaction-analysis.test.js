@@ -56,3 +56,22 @@ test('seleciona a lista certa para cada aba da prévia', () => {
   assert.equal(getTransactionsForPreviewMode(analysis, 'investments').length, 1)
   assert.equal(getTransactionsForPreviewMode(analysis, 'all').length, 2)
 })
+
+test('deixa lançamentos fora do período declarado fora da importação', () => {
+  const analysis = analyzeTransactions(
+    [
+      transaction('PIX dentro do período', 100),
+      { ...transaction('PIX do mês seguinte', -30), date: '2026-07-01' },
+    ],
+    { periodStart: '2026-06-01', periodEnd: '2026-06-30' },
+  )
+
+  assert.equal(analysis.importable.length, 1)
+  assert.equal(analysis.outsidePeriod.length, 1)
+  assert.deepEqual(analysis.summary, {
+    inflows: 100,
+    outflows: 0,
+    net: 100,
+    pixCount: 1,
+  })
+})
