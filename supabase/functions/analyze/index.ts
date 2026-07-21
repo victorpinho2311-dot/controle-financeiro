@@ -9,6 +9,8 @@ const corsHeaders = {
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: corsHeaders })
 
+const pause = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds))
+
 const monthBounds = (month: string) => {
   const [year, monthNumber] = month.split('-').map(Number)
   const lastDay = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate()
@@ -156,43 +158,68 @@ Deno.serve(async (request) => {
       largestExpenses: largestTransactions,
     }
 
-    const model = Deno.env.get('GEMINI_ANALYSIS_MODEL') ?? 'gemini-2.5-flash'
-    const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-      {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-goog-api-key': apiKey,
-        },
-        body: JSON.stringify({
-          systemInstruction: {
-            parts: [
-              {
-                text: 'Você é um analista financeiro pessoal prudente. Use apenas os dados recebidos. Não faça promessas, não prescreva investimentos e não dê conselhos genéricos. Seja específico, curto e ancorado nos números.',
-              },
-            ],
+    const model = Deno.env.get('GEMINI_ANALYSIS_MODEL') ?? 'gemini-3.5-flash'
+    const fallbackModel = 'gemini-3.1-flash-lite'
+    const generateWithGemini = (modelName: string) =>
+      fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelName)}:generateContent`,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'x-goog-api-key': apiKey,
           },
-          generationConfig: {
-            maxOutputTokens: 900,
-            responseMimeType: 'application/json',
-            temperature: 0.2,
-          },
-          contents: [
-            {
-              role: 'user',
+          body: JSON.stringify({
+            systemInstruction: {
               parts: [
                 {
-                  text: `Analise os dados financeiros abaixo. Retorne um JSON válido com este formato: {"summary":"...","highlights":["..."],"suggestions":["..."],"alerts":["..."]}. Dê entre 2 e 5 itens por lista quando houver base nos dados. Dados: ${JSON.stringify(prompt)}`,
+                  text: 'Você é um analista financeiro pessoal prudente. Use apenas os dados recebidos. Não faça promessas, não prescreva investimentos e não dê conselhos genéricos. Seja específico, curto e ancorado nos números.',
                 },
               ],
             },
-          ],
-        }),
-      },
-    )
+            generationConfig: {
+              maxOutputTokens: 900,
+              responseMimeType: 'application/json',
+              temperature: 0.2,
+            },
+            contents: [
+              {
+                role: 'user',
+                parts: [
+                  {
+                    text: `Analise os dados financeiros abaixo. Retorne um JSON válido com este formato: {"summary":"...","highlights":["..."],"suggestions":["..."],"alerts":["..."]}. Dê entre 2 e 5 itens por lista quando houver base nos dados. Dados: ${JSON.stringify(prompt)}`,
+                  },
+                ],
+              },
+            ],
+          }),
+        },
+      )
 
-    if (!geminiResponse.ok) {
+    let geminiResponse: Response | null = null
+    let selectedModel = model
+
+    for (const modelName of [...new Set([model, fallbackModel])]) {
+      selectedModel = modelName
+
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        geminiResponse = await generateWithGemini(modelName)
+
+        if (geminiResponse.ok || ![408, 429, 500, 502, 503, 504].includes(geminiResponse.status)) {
+          break
+        }
+
+        if (attempt < 2) {
+          await pause(750 * 2 ** attempt + Math.round(Math.random() * 250))
+        }
+      }
+
+      if (geminiResponse.ok || ![429, 500, 502, 503, 504].includes(geminiResponse.status)) {
+        break
+      }
+    }
+
+    if (!geminiResponse?.ok) {
       const details = await geminiResponse.text()
       console.error('Gemini API error', geminiResponse.status, details)
       return json({ error: 'O Gemini não conseguiu gerar a análise agora.' }, 502)
@@ -208,7 +235,7 @@ Deno.serve(async (request) => {
     const insight = extractJson(content)
     const { error: saveError } = await supabase.from('insights').insert({
       period,
-      model,
+      model: geminiPayload.model ?? selectedModel,
       content_json: insight,
     })
 
@@ -216,7 +243,7 @@ Deno.serve(async (request) => {
       throw saveError
     }
 
-    return json({ insight, model, period })
+    return json({ insight, model: geminiPayload.model ?? selectedModel, period })
   } catch (error) {
     console.error('Analyze function error', error)
     return json({ error: 'Não foi possível gerar a análise. Tente novamente.' }, 500)
