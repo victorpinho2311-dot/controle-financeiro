@@ -237,6 +237,21 @@ export function ImportPage() {
         throw error
       }
 
+      const importId = data?.[0]?.import_id
+      if (importId && parsedOfx.ledgerBalance != null && parsedOfx.ledgerBalanceDate) {
+        const { error: balanceError } = await supabase
+          .from('imports')
+          .update({
+            closing_balance: parsedOfx.ledgerBalance,
+            balance_date: parsedOfx.ledgerBalanceDate,
+          })
+          .eq('id', importId)
+
+        if (balanceError) {
+          throw balanceError
+        }
+      }
+
       setImportResult(data?.[0] ?? null)
     } catch (error) {
       setImportError(error.message ?? 'Não foi possível salvar esta importação.')

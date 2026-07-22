@@ -76,6 +76,7 @@ export function DashboardPage({ onImport }) {
   const [categories, setCategories] = useState([])
   const [transactions, setTransactions] = useState([])
   const [evolutionTransactions, setEvolutionTransactions] = useState([])
+  const [accountBalances, setAccountBalances] = useState([])
   const [month, setMonth] = useState(currentMonth)
   const [bank, setBank] = useState('')
   const [sourceType, setSourceType] = useState('')
@@ -128,7 +129,8 @@ export function DashboardPage({ onImport }) {
 
       try {
         const { start, end } = getMonthBounds(month)
-        let query = getSupabaseClient()
+        const supabase = getSupabaseClient()
+        let query = supabase
           .from('transactions')
           .select('id, account_id, card_id, category_id, date, amount, description, raw_type')
           .gte('date', start)
@@ -150,7 +152,7 @@ export function DashboardPage({ onImport }) {
 
         const historicalMonths = getPreviousMonths(month)
         const historicalStart = getMonthBounds(historicalMonths[0]).start
-        let evolutionQuery = getSupabaseClient()
+        let evolutionQuery = supabase
           .from('transactions')
           .select('date, amount, card_id, category_id')
           .gte('date', historicalStart)
@@ -166,16 +168,29 @@ export function DashboardPage({ onImport }) {
           evolutionQuery = evolutionQuery.eq('card_id', cardId)
         }
 
-        const [transactionsResult, evolutionResult] = await Promise.all([query, evolutionQuery])
+        const balancesQuery = supabase
+          .from('imports')
+          .select('account_id, closing_balance, balance_date')
+          .not('closing_balance', 'is', null)
+          .lte('balance_date', end)
+          .order('balance_date', { ascending: false })
+          .limit(500)
+
+        const [transactionsResult, evolutionResult, balancesResult] = await Promise.all([
+          query,
+          evolutionQuery,
+          balancesQuery,
+        ])
         const { data, error: transactionsError } = transactionsResult
 
-        if (transactionsError || evolutionResult.error) {
-          throw transactionsError ?? evolutionResult.error
+        if (transactionsError || evolutionResult.error || balancesResult.error) {
+          throw transactionsError ?? evolutionResult.error ?? balancesResult.error
         }
 
         if (isCurrent) {
           setTransactions(data)
           setEvolutionTransactions(evolutionResult.data)
+          setAccountBalances(balancesResult.data)
         }
       } catch (loadError) {
         if (isCurrent) {
@@ -208,6 +223,33 @@ export function DashboardPage({ onImport }) {
     () => new Map(categories.map((category) => [category.id, category])),
     [categories],
   )
+
+  const closingBalance = useMemo(() => {
+    const eligibleCheckingAccountIds = new Set(
+      accounts
+        .filter(
+          (account) =>
+            account.type === 'checking' &&
+            (!bank || account.bank === bank) &&
+            (!sourceType || account.type === sourceType),
+        )
+        .map((account) => account.id),
+    )
+    const latestByAccount = new Map()
+
+    for (const balance of accountBalances) {
+      if (eligibleCheckingAccountIds.has(balance.account_id) && !latestByAccount.has(balance.account_id)) {
+        latestByAccount.set(balance.account_id, balance)
+      }
+    }
+
+    const balances = [...latestByAccount.values()]
+    return {
+      amount: balances.reduce((total, balance) => total + Number(balance.closing_balance), 0),
+      latestDate: balances.map((balance) => balance.balance_date).sort().at(-1) ?? null,
+      available: balances.length > 0,
+    }
+  }, [accounts, accountBalances, bank, sourceType])
 
   const summary = useMemo(() => {
     const inflows = transactions
@@ -305,7 +347,8 @@ export function DashboardPage({ onImport }) {
               </p>
               <h1 className="mt-3 text-3xl font-bold tracking-[-0.045em] sm:text-[2.45rem]">Seu mês em foco</h1>
               <p className="mt-2 max-w-xl text-sm leading-6 text-emerald-50/65">
-                Uma visão clara de tudo que entrou, saiu e merece sua atenção em {monthLabel(month)}.
+                Saldo do banco e movimentações do extrato em {monthLabel(month)}, sem confundir
+                transferências com receita ou dívida.
               </p>
             </div>
             <button className="inline-flex w-fit items-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-bold text-[#0b6549] shadow-xl shadow-black/10 transition hover:-translate-y-0.5 hover:bg-emerald-50" onClick={onImport} type="button">
@@ -346,9 +389,9 @@ export function DashboardPage({ onImport }) {
         {error && <p className="mt-5 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">{error}</p>}
 
         <section className="mt-5 grid gap-3 sm:grid-cols-3">
-          <SummaryCard detail="Receitas e créditos, sem transferências" icon={ArrowDownLeft} label="Entradas" value={absoluteCurrencyFormatter.format(summary.inflows)} tone="emerald" />
-          <SummaryCard detail="Despesas e compras, sem transferências" icon={ArrowUpRight} label="Saídas" value={absoluteCurrencyFormatter.format(summary.outflows)} tone="rose" />
-          <SummaryCard detail="Entradas menos saídas; não é o saldo bancário" icon={Wallet} label="Fluxo do mês" value={currencyFormatter.format(summary.net)} tone={summary.net >= 0 ? 'blue' : 'amber'} />
+          <SummaryCard detail="Movimentações positivas; transferências ficam de fora" icon={ArrowDownLeft} label="Entradas no extrato" value={absoluteCurrencyFormatter.format(summary.inflows)} tone="emerald" />
+          <SummaryCard detail="Movimentações negativas; transferências ficam de fora" icon={ArrowUpRight} label="Saídas no extrato" value={absoluteCurrencyFormatter.format(summary.outflows)} tone="rose" />
+          <SummaryCard detail={closingBalance.available ? `Saldo informado pelo Bradesco em ${formatDate(closingBalance.latestDate)}` : 'Importe um OFX de conta corrente para ver o saldo bancário'} icon={Wallet} label="Saldo em conta" value={closingBalance.available ? absoluteCurrencyFormatter.format(closingBalance.amount) : '—'} tone="blue" />
         </section>
 
         <section className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.42fr)_minmax(20rem,0.58fr)]">

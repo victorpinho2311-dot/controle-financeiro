@@ -174,6 +174,9 @@ export const parseOfx = (input) => {
     }
   })
 
+  const ledgerBalance = extractTag(source, 'BALAMT')
+  const ledgerBalanceDate = extractTag(source, 'DTASOF')
+
   return {
     accountNumber: extractTag(source, 'ACCTID'),
     currency: extractTag(source, 'CURDEF') ?? 'BRL',
@@ -181,6 +184,8 @@ export const parseOfx = (input) => {
       ? normalizeOfxDate(extractTag(source, 'DTSTART'))
       : null,
     periodEnd: extractTag(source, 'DTEND') ? normalizeOfxDate(extractTag(source, 'DTEND')) : null,
+    ledgerBalance: ledgerBalance ? normalizeOfxAmount(ledgerBalance) : null,
+    ledgerBalanceDate: ledgerBalanceDate ? normalizeOfxDate(ledgerBalanceDate) : null,
     transactions,
     warnings,
   }
