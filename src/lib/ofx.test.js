@@ -31,6 +31,9 @@ CHARSET:1252
 <TRNAMT>2500.00
 <FITID>bradesco-002
 <NAME>SALÁRIO
+<LEDGERBAL>
+<BALAMT>1.234,56
+<DTASOF>20260720
 <BANKTRANLIST>
 <STMTRS>
 <STMTTRNRS>
@@ -45,6 +48,8 @@ test('interpreta OFX SGML em Windows-1252 e normaliza os lançamentos', () => {
   assert.equal(parsed.currency, 'BRL')
   assert.equal(parsed.periodStart, '2026-07-01')
   assert.equal(parsed.periodEnd, '2026-07-20')
+  assert.equal(parsed.ledgerBalance, 1234.56)
+  assert.equal(parsed.ledgerBalanceDate, '2026-07-20')
   assert.deepEqual(parsed.transactions, [
     {
       fitid: 'bradesco-001',
@@ -71,6 +76,8 @@ test('aceita tags OFX fechadas e preserva a convenção negativa para saída', (
 
   assert.equal(parsed.transactions[0].date, '2026-02-28')
   assert.equal(parsed.transactions[0].amount, -9.99)
+  assert.equal(parsed.ledgerBalance, null)
+  assert.equal(parsed.ledgerBalanceDate, null)
 })
 
 test('descarta um lançamento inválido sem interromper os demais', () => {
